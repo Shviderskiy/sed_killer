@@ -8,18 +8,24 @@
 #define _MAX_PATH_LEN 256
 #define _MAX_LINE_LEN 2048
 
-
-
-void handle_error(char const *message) {
-
-	fprintf(stderr, "Error: %s\n", message);
-	fprintf(stdout, "Usage: sed_killer.exe "
-		"-f=FIND_STR -r=REPL_STR\n"
-		"\t[-b=BEG_LENE, -e=END_LINE, -i] "
-		"[INPUT_F_NAME, OUTPUT_F_NAME]\n");
-	system("pause");
-	exit(1);
+#define _ASSERT(_COND, _MES, ...) \
+if (!(_COND)) \
+{ \
+	fprintf(stderr, "Error: " _MES "\n", __VA_ARGS__); \
+	fprintf(stdout, "%s", help); \
+	system("pause"); \
+	exit(1); \
 }
+
+
+char help[] =
+"Usage: sed_killer.exe -f -r [-b -e -i] [IN_FILE, OUT_FILE]\n" \
+"\toptions:\n" \
+"\t\t-f=FIND_STR\n" \
+"\t\t-r=REPL_STR\n"
+"\t\t-b=BEGIN_LINE optional\n" \
+"\t\t-e=END_LINE optional\n" \
+"\t\t-i (ignore case) optional\n\n"; 
 
 
 
@@ -29,16 +35,13 @@ struct cl_options {
 	char in_file_name[_MAX_PATH_LEN];
 	char out_file_name[_MAX_PATH_LEN];
 
-	int32_t beg_line;
-	int32_t end_line;
+	int32_t beg_line_num;
+	int32_t end_line_num;
 
 	char const *find_str;
 	char const *repl_str;
 
 	bool ignore_case;
-
-	bool is_beg_line_set;
-	bool is_end_line_set;
 };
 
 
@@ -47,14 +50,11 @@ void init_clo(struct cl_options *pclo) {
 
 	memset(pclo->in_file_name, '\0', _MAX_PATH_LEN);
 	memset(pclo->out_file_name, '\0', _MAX_PATH_LEN);
-	pclo->beg_line = 0;
-	pclo->end_line = INT32_MAX;
+	pclo->beg_line_num = -1;
+	pclo->end_line_num = -1;
 	pclo->find_str = NULL;
 	pclo->repl_str = NULL;
 	pclo->ignore_case = false;
-
-	pclo->is_beg_line_set = false;
-	pclo->is_end_line_set = false;
 }
 
 
@@ -68,15 +68,16 @@ void parse_clo(
 
 		if (memcmp(*argv, "-f=", 3) == 0) {
 
-			if (pclo->find_str != NULL)
-				handle_error(
-				"The find string is already set");
+			_ASSERT(pclo->find_str == NULL,
+				"Wrong '-f' key. "
+				"The find string is already set '%s'.",
+				pclo->find_str);
 
 			pclo->find_str = *argv + 3;
 
-			if (*pclo->find_str == '\0')
-				handle_error(
-				"Wrong find string");
+			_ASSERT(*pclo->find_str != '\0',
+				"Wrong '-f' key. "
+				"The find string must be non-zero length.");
 
 			argv++;
 			continue;
@@ -84,21 +85,20 @@ void parse_clo(
 
 		if (memcmp(*argv, "-r=", 3) == 0) {
 
-			if (pclo->repl_str != NULL)
-				handle_error(
-				"The string to be replaced is already set");
+			_ASSERT(pclo->repl_str == NULL,
+				"Wrong '-r' key. "
+				"The find string is already set '%s'.",
+				pclo->repl_str);
 
 			pclo->repl_str = *argv + 3;
-
 			argv++;
 			continue;
 		}
 
 		if (memcmp(*argv, "-i", 2) == 0) {
 
-			if (pclo->ignore_case)
-				handle_error(
-				"The '-i' option is already set");
+			_ASSERT(pclo->ignore_case == false,
+				"The '-i' option is already set.");
 
 			pclo->ignore_case = true;
 			argv++;
@@ -107,32 +107,28 @@ void parse_clo(
 
 		if (memcmp(*argv, "-b=", 3) == 0) {
 
-			if (pclo->is_beg_line_set)
-				handle_error(
-				"The '-b' option is already set");
+			_ASSERT(pclo->beg_line_num == -1,
+				"The '-b' option is already set '%d'.",
+				pclo->beg_line_num);
 
-			if (sscanf_s(*argv + 3, "%d", &pclo->beg_line) <= 0
-				|| pclo->beg_line < 0)
-				handle_error(
-				"Wrong '-b' option (Expected positive number)");
+			_ASSERT(sscanf_s(*argv + 3, "%d", &pclo->beg_line_num) > 0
+				&& pclo->beg_line_num >= 0,
+				"Wrong '-b' option (Expected positive number).");
 
-			pclo->is_beg_line_set = true;
 			argv++;
 			continue;
 		}
 
 		if (memcmp(*argv, "-e=", 3) == 0) {
 
-			if (pclo->is_end_line_set)
-				handle_error(
-				"The '-e' option is already set");
+			_ASSERT(pclo->end_line_num == -1,
+				"The '-e' option is already set '%d'.",
+				pclo->end_line_num);
 
-			if (sscanf_s(*argv + 3, "%d", &pclo->end_line) <= 0
-				|| pclo->end_line < 0)
-				handle_error(
-				"Wrong '-e' option (Expected positive number)");
+			_ASSERT(sscanf_s(*argv + 3, "%d", &pclo->end_line_num) > 0
+				&& pclo->end_line_num >= 0,
+				"Wrong '-e' option (Expected positive number).");
 
-			pclo->is_end_line_set = true;
 			argv++;
 			continue;
 		}
@@ -141,47 +137,44 @@ void parse_clo(
 	}
 
 
-	if (pclo->find_str == NULL)
-		handle_error(
-		"The key '-f' must be specified");
+	if (pclo->beg_line_num == -1)
+		pclo->beg_line_num = 0;
 
-	if (pclo->repl_str == NULL)
-		handle_error(
-		"The key '-r' must be specified");
+	if (pclo->end_line_num == -1)
+		pclo->end_line_num = INT32_MAX;
 
-	if (pclo->beg_line >= pclo->end_line)
-		handle_error(
-		"'-b' value must be < '-e' value");
+	_ASSERT(pclo->find_str != NULL,
+		"The key '-f' must be specified.");
+
+	_ASSERT(pclo->repl_str != NULL,
+		"The key '-r' must be specified.");
+
+	_ASSERT(pclo->beg_line_num <= pclo->end_line_num,
+		"The '-b' value must be <= '-e' value.");
 
 
 	if (*argv == NULL) return;
 
-	// memcpy
-	if (strncpy_s( // безопасный аналог функции strcpy
-		/*  */pclo->in_file_name, _MAX_PATH_LEN,
-		/*  */*argv, _MAX_PATH_LEN
-		) != 0)
-		handle_error(
-		"Wrong input file name");
+	_ASSERT(strlen(*argv) < _MAX_PATH_LEN,
+		"Too long input file name.");
 
+	memcpy(pclo->in_file_name, *argv, _MAX_PATH_LEN);
 	argv++;
 
 
 	if (*argv == NULL) return;
 
-	if (strncpy_s(
-		/*  */pclo->out_file_name, _MAX_PATH_LEN,
-		/*  */*argv, _MAX_PATH_LEN
-		) != 0)
-		handle_error(
-		"Wrong output file name");
+	_ASSERT(strlen(*argv) < _MAX_PATH_LEN,
+		"Too long output file name.");
 
+	memcpy(pclo->out_file_name, *argv, _MAX_PATH_LEN);
 	argv++;
 
 
-	if (*argv != NULL)
-		handle_error(
-		"The name of the output file must be last argument");
+	_ASSERT(*argv == NULL,
+		"Wrong arguments '%s ...'\n"
+		"The name of the output file must be last argument.",
+		*argv);
 
 }
 
@@ -194,8 +187,8 @@ void dump_clo(struct cl_options const *pclo) {
 		*pclo->out_file_name ? pclo->out_file_name : "stdout");
 	printf("find_str = %s\n", pclo->find_str);
 	printf("repl_str = %s\n", pclo->repl_str);
-	printf("beg_line = %d\n", pclo->beg_line);
-	printf("end_line = %d\n", pclo->end_line);
+	printf("beg_line_num = %d\n", pclo->beg_line_num);
+	printf("end_line_num = %d\n", pclo->end_line_num);
 	printf("ignore_case = %d\n", pclo->ignore_case);
 }
 
@@ -240,7 +233,7 @@ void start_replacement(
 
 	int32_t line_num = 0;
 
-	while (line_num < pclo->beg_line) {
+	while (line_num < pclo->beg_line_num) {
 
 		if (fgets(line, _MAX_LINE_LEN, in_file) == NULL) return;
 		fprintf(out_file, "%s", line);
@@ -251,7 +244,7 @@ void start_replacement(
 	size_t find_str_len = strlen(pclo->find_str);
 	size_t repl_str_len = strlen(pclo->repl_str);
 
-	while (line_num <= pclo->end_line &&
+	while (line_num <= pclo->end_line_num &&
 		fgets(line, _MAX_LINE_LEN, in_file) != NULL) {
 
 		char const *beg = line, *end = NULL;
@@ -294,8 +287,7 @@ int main(int32_t argc, char const *const *argv) {
 	if (*clo.in_file_name == '\0') {
 
 		printf("Warning: The name of the input file "
-			"was not specified\n");
-		printf("Name: ");
+			"was not specified\nName: ");
 		fgets(clo.in_file_name, _MAX_PATH_LEN, stdin);
 		*(clo.in_file_name + strlen(clo.in_file_name) - 1) = '\0';
 	}
@@ -303,19 +295,20 @@ int main(int32_t argc, char const *const *argv) {
 	//dump_clo(&clo);
 
 
-	FILE *in_file, *out_file;
+	FILE *in_file = NULL, *out_file = NULL;
 
 	fopen_s(&in_file, clo.in_file_name, "r");
-	if (in_file == NULL)
-		handle_error("Fail to open input file");
+	_ASSERT(in_file != NULL,
+		"Fail to open input file '%s'.",
+		clo.in_file_name);
 
-	if (*clo.out_file_name == '\0')
-		out_file = stdout;
+	if (*clo.out_file_name == '\0') out_file = stdout;
 	else {
 
 		fopen_s(&out_file, clo.out_file_name, "w");
-		if (out_file == NULL)
-			handle_error("Fail to open output file");
+		_ASSERT(out_file != NULL,
+			"Fail to open output file '%s'.",
+			clo.out_file_name);
 	}
 
 	start_replacement(in_file, out_file, &clo);
@@ -323,7 +316,6 @@ int main(int32_t argc, char const *const *argv) {
 	fclose(in_file);
 	if (out_file != stdout) fclose(out_file);
 
-	system("pause");
 	return 0;
 }
 
