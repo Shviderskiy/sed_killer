@@ -171,7 +171,7 @@ void parse_clo(
 
 
 	_ASSERT(*argv == NULL,
-		"Wrong arguments '%s ...'\n"
+		"Wrong arguments '%s ...'.\n"
 		"The name of the output file must be last argument.",
 		*argv);
 
@@ -229,6 +229,7 @@ void start_replacement(
 	FILE *in_file, FILE *out_file, struct cl_options const *pclo)
 {
 	char line[_MAX_LINE_LEN];
+	memset(line, '\0', _MAX_LINE_LEN);
 
 	int32_t line_num = 0;
 
@@ -272,7 +273,7 @@ void start_replacement(
 	while (fgets(line, _MAX_LINE_LEN, in_file) != NULL)
 		fprintf(out_file, "%s", line);
 
-	fprintf(out_file, "\n");
+	if (out_file == stdout) fprintf(out_file, "\n");
 }
 
 
