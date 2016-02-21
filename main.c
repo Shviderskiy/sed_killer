@@ -13,7 +13,6 @@ if (!(_COND)) \
 { \
 	fprintf(stderr, "Error: " _MES "\n", __VA_ARGS__); \
 	fprintf(stdout, "%s", help); \
-	system("pause"); \
 	exit(1); \
 }
 
