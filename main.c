@@ -94,7 +94,7 @@ void parse_clo(
 			continue;
 		}
 
-		if (memcmp(*argv, "-i", 2) == 0) {
+		if (strcmp(*argv, "-i") == 0) {
 
 			_ASSERT(pclo->ignore_case == false,
 				"The '-i' option is already set.");
