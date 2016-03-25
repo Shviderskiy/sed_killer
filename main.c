@@ -18,13 +18,12 @@ if (!(_COND)) \
 
 
 char help[] =
-"Usage: sed_killer.exe -f -r [-b -e -i] [IN_FILE, OUT_FILE]\n" \
-"\toptions:\n" \
-"\t\t-f=FIND_STR\n" \
-"\t\t-r=REPL_STR\n"
-"\t\t-b=BEGIN_LINE optional\n" \
-"\t\t-e=END_LINE optional\n" \
-"\t\t-i (ignore case) optional\n\n"; 
+"Usage: sed_killer.exe [OPTION]... [IN_FILE, OUT_FILE]\n" \
+"\t-f=FIND_STR\n" \
+"\t-r=REPL_STR\n"
+"\t-b=BEGIN_LINE (optional)\n" \
+"\t-e=END_LINE (optional)\n" \
+"\t-i (optional): ignore case \n\n";
 
 
 
@@ -318,4 +317,3 @@ int main(int32_t argc, char const *const *argv) {
 
 	return 0;
 }
-
