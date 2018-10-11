@@ -11,8 +11,8 @@
 
 #define sscanf_s(...) sscanf(__VA_ARGS__)
 
-#define fopen_s(_Fife, _Filename, _Mode) \
-    (NULL == ((*(_Fife)) = fopen((_Filename), (_Mode))))
+#define fopen_s(_FILE, _FILENAME, _MODE) \
+    (NULL == ((*(_FILE)) = fopen((_FILENAME), (_MODE))))
 
 #endif
 
